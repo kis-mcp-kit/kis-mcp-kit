@@ -19,6 +19,12 @@ BotFather replies with a token like `123456789:AAHfiqksKZ8...` — copy the whol
 
 ### 2. Fill in the config
 
+Copy the example and fill in your own values. The real file is git-ignored, so it stays on your machine:
+
+```bash
+cp telegram_config.example.txt telegram_config.txt
+```
+
 Edit `telegram_config.txt`. Leave `chat_id` empty:
 
 ```json
@@ -28,6 +34,8 @@ Edit `telegram_config.txt`. Leave `chat_id` empty:
   "chat_id": ""
 }
 ```
+
+Never commit the real `telegram_config.txt`. If the token ever leaks, send `/revoke` to BotFather and paste the new one.
 
 ### 3. Say hello to your bot
 

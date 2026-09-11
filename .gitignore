@@ -1,0 +1,13 @@
+# credentials / local env
+kis.env
+.env
+*.env
+!.env.example
+telegram/telegram_config.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
