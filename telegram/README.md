@@ -7,6 +7,9 @@ Useful for pushing trade signals, fills, or errors to your phone.
 
 ## Setup
 
+You fill in two things about the bot you create. The script works out the
+rest on its own.
+
 ### 1. Create a bot
 
 In Telegram, message [@BotFather](https://t.me/BotFather) and send `/newbot`.
@@ -14,30 +17,25 @@ Give it a display name and a username ending in `bot`.
 
 BotFather replies with a token like `123456789:AAHfiqksKZ8...` — copy the whole string.
 
-### 2. Get your chat id
+### 2. Fill in the config
 
-Open your new bot and send it `/start`. Then open this URL in a browser,
-replacing `<TOKEN>` with your token:
-
-```
-https://api.telegram.org/bot<TOKEN>/getUpdates
-```
-
-Find `"chat":{"id":123456789` in the response. That number is your chat id.
-
-> A bot cannot message you first — Telegram only allows it after you
-> have messaged the bot. If `getUpdates` comes back empty, send `/start` again.
-
-### 3. Fill in the config
-
-Edit `telegram_config.txt`:
+Edit `telegram_config.txt`. Leave `chat_id` empty:
 
 ```json
 {
   "bot_token": "123456789:AAHfiqksKZ8...",
-  "chat_id": "123456789"
+  "bot_username": "my_assistant_bot",
+  "chat_id": ""
 }
 ```
+
+### 3. Say hello to your bot
+
+Open your new bot in Telegram and send it `/start`.
+
+> This step is not optional. A bot cannot start a conversation — Telegram
+> only lets it write to someone who messaged it first. That first message is
+> also how the script learns where to send.
 
 ### 4. Test
 
@@ -45,7 +43,20 @@ Edit `telegram_config.txt`:
 python telegram_notify.py "hello"
 ```
 
-Prints `sent` and the message appears in your chat.
+Prints `sent`, the message appears in your chat, and `chat_id` is filled in
+and cached in the config so later sends skip the lookup.
+
+To do the lookup without sending anything:
+
+```bash
+python telegram_notify.py --resolve
+```
+
+```
+bot:     @my_assistant_bot
+chat_id: 123456789  (Your Name (@yourhandle))
+saved to .../telegram_config.txt
+```
 
 ## Usage
 
@@ -76,23 +87,29 @@ are safe to include.
 
 ## Config
 
-Values are read from `telegram_config.txt` next to the script.
-Environment variables override the file, which is handy for CI or
-for keeping the token out of a shared folder:
+| Key | You set it? | Meaning |
+|---|---|---|
+| `bot_token` | yes | From BotFather |
+| `bot_username` | optional | Checked against the token, to catch a pasted wrong token |
+| `chat_id` | no | Filled in automatically; who the bot sends to |
 
-| Variable | Overrides |
-|---|---|
-| `TELEGRAM_BOT_TOKEN` | `bot_token` |
-| `TELEGRAM_CHAT_ID` | `chat_id` |
+Environment variables override the file, which is handy for CI or for
+keeping the token out of a shared folder: `TELEGRAM_BOT_TOKEN` and
+`TELEGRAM_CHAT_ID`.
+
+If more than one person has messaged the bot, the script cannot guess which
+one you mean and will list the candidates — put the right number in `chat_id`.
 
 ## Troubleshooting
 
 | Message | Cause |
 |---|---|
-| `set bot_token and chat_id in ...` | Config still has the placeholder values |
+| `set bot_token in ...` | Config still has the placeholder values |
 | `config file not found` | `telegram_config.txt` is missing or renamed |
+| `nobody has messaged this bot yet` | Step 3 was skipped — send `/start` |
+| `bot_token belongs to @x, but bot_username says @y` | Token and bot name disagree |
 | `telegram api error 401` | Token is wrong or was revoked |
-| `telegram api error 400` | Chat id is wrong, or you never sent `/start` |
+| `telegram api error 404` | Token is malformed |
 | `telegram connection failed` | No network, or a proxy is blocking api.telegram.org |
 
 ## Security

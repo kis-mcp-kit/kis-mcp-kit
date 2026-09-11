@@ -1,4 +1,5 @@
 {
   "bot_token": "...",
+  "bot_username": "...,
   "chat_id": "..."
 }
