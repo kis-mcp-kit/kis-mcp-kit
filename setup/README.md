@@ -85,7 +85,7 @@ curl -sS --max-time 5 -D- -o /dev/null -H "Authorization: Bearer <토큰>" http:
 
 `HTTP/1.1 200 OK`와 `content-type: text/event-stream`이 보이면 성공입니다. `/sse`는 끊기지 않고 계속 열려 있는 통로라서 `--max-time 5`가 없으면 명령이 멈춘 것처럼 보이는데, 5초 뒤 저절로 끝나면 정상입니다. Windows PowerShell에서는 `curl` 대신 `curl.exe`라고 적으세요.
 
-토큰 없이 호출하면 401이 나옵니다. 401은 서버가 살아 있고 토큰만 틀렸다는 뜻이라 오히려 좋은 신호입니다.
+주의할 점이 하나 있습니다. `/sse`는 토큰이 없거나 틀려도 똑같이 200을 돌려줍니다(2026년 9월 실측). 토큰은 AI 도구가 실제로 도구를 호출할 때 검사되며, 틀리면 AI 도구 쪽에 `Unauthorized: invalid or missing MCP access token` 오류가 뜹니다. 그러니 이 단계의 200은 "서버가 살아 있다"는 뜻이고, 토큰이 맞는지는 6단계의 모의 조회로 확인합니다.
 
 ## 5. AI 도구에 연결하기
 
@@ -118,9 +118,9 @@ curl -sS --max-time 5 -D- -o /dev/null -H "Authorization: Bearer <토큰>" http:
 
 저장한 뒤 Claude Desktop을 완전히 종료(파일 → 종료)하고 다시 실행합니다. 채팅창의 커넥터 목록에 `kis-trade-mcp`가 보이면 연결된 것입니다.
 
-### Cursor, Codex, ChatGPT
+### Cursor, Codex
 
-각 제품의 MCP(커넥터) 설정 화면에 같은 주소 `http://localhost:3000/sse`와 같은 헤더 `Authorization: Bearer <토큰>`을 넣습니다. 화면은 달라도 확인 방법은 같습니다. 서버가 200을 돌려주고, 도구 목록이 보이면 됩니다.
+각 제품의 MCP 설정 화면에 같은 주소 `http://localhost:3000/sse`와 같은 헤더 `Authorization: Bearer <토큰>`을 넣습니다. 화면은 달라도 확인 방법은 같습니다. 도구 목록이 보이고 6단계의 모의 조회가 되면 됩니다. ChatGPT의 커넥터는 인터넷에서 접근되는 공개 HTTPS 주소만 받으므로, 내 컴퓨터 안(`127.0.0.1`)에만 열어 둔 이 서버에는 연결하지 않습니다.
 
 ## 6. 동작 확인
 
@@ -131,15 +131,16 @@ AI 도구 채팅창에 "모의계좌로 삼성전자 현재가 알려줘"라고 
 | 증상 | 원인 | 해결 |
 | --- | --- | --- |
 | 컨테이너가 켜지자마자 꺼짐. 로그에 `MCP_ACCESS_TOKEN must be set when MCP_TYPE is 'sse'` | 접속 토큰을 넣지 않음 | `kis.env`에 `MCP_ACCESS_TOKEN`을 채우고 3단계를 다시 실행 |
-| `curl`이 연결 거부 | Docker Desktop이 꺼져 있거나 컨테이너가 죽음 | Docker Desktop 실행 후 `docker ps`로 확인, 없으면 3단계 재실행 |
+| `curl`이 연결 거부 | Docker 엔진(Docker Desktop 등)이 꺼져 있거나 컨테이너가 죽음 | Docker 엔진 실행 후 `docker ps`로 확인, 없으면 3단계 재실행 |
 | 서버는 켜졌는데 밖에서 접속 불가 | `MCP_HOST`가 `127.0.0.1` | `MCP_HOST=0.0.0.0`으로 고치고 컨테이너 재생성 |
-| `curl` 401 | 토큰이 다르거나 헤더 누락 | `kis.env`와 명령의 토큰이 같은지 확인 |
+| `/sse`는 200인데 AI 도구에서 `Unauthorized: invalid or missing MCP access token` | 토큰이 다르거나 헤더 누락(`/sse`는 토큰과 무관하게 200) | `kis.env`와 AI 도구 설정의 토큰이 같은지, 헤더가 `Authorization: Bearer <토큰>`인지 확인 |
 | 포트가 이미 사용 중 | 3000번을 다른 프로그램이 점유 | `-p 127.0.0.1:3001:3000`으로 바꾸고 주소도 3001로 |
 | Claude Desktop 커넥터에 안 보임 | 설정 파일 JSON 오류, 토큰 불일치, 앱을 완전히 종료하지 않음 | 파일 문법 확인(쉼표·따옴표), 토큰 대조, 파일 → 종료 후 재실행 |
 | 실전 조회에서 `EGW00304` | 실전 App Secret이 자리표시자 | 정상. 모의 조회로 검증 |
 
 ## 보안
 
+- Claude Desktop, Cursor 등 AI 도구 설정 파일에 넣은 `MCP_ACCESS_TOKEN`은 디스크에 평문으로 남습니다. 공용 PC를 쓰거나 화면·백업을 공유할 때는 설정 파일도 함께 지우거나 토큰을 새로 정하세요.
 - `kis.env`는 본인만 읽을 수 있게 하고, 클라우드 동기화 폴더와 화면 공유를 피하세요.
 - 키가 노출된 것 같으면 KIS Developers에서 재발급합니다.
 - 컴퓨터를 수리 맡기거나 넘기기 전에 컨테이너(`docker rm -f kis-trade-mcp`), `kis.env`, AI 도구 설정을 지웁니다.

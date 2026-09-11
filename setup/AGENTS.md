@@ -12,8 +12,8 @@
 
 ### 목표
 1. Docker로 `kis-trade-mcp` 이미지를 빌드하고 컨테이너를 띄운다.
-2. `http://127.0.0.1:3000/sse`가 Bearer 토큰과 함께 HTTP 200을 돌려주는지 확인한다.
-3. 내가 쓰는 MCP 호스트(Claude Desktop, Cursor, Codex, ChatGPT 커넥터 중 하나)에 서버를 등록한다.
+2. `http://127.0.0.1:3000/sse`가 HTTP 200을 돌려주는지(서버 생존) 확인한다.
+3. 내가 쓰는 MCP 호스트(Claude Desktop, Cursor, Codex 중 하나)에 서버를 등록한다. ChatGPT 커넥터는 공개 HTTPS 주소만 받으므로 이 로컬 서버에는 쓰지 않는다.
 4. 모의투자 기준으로 도구 호출이 되면 삼성전자(005930) 현재가를 조회해 숫자로 보여 준다.
 5. 막히면 "단계 이름 + 실행한 명령 + 실제 출력 또는 오류"를 정리해 보고한다. 비밀 값은 마스킹한다.
 
@@ -80,7 +80,9 @@ curl -sS --max-time 5 -D- -o /dev/null \
 ```
 기대 결과: HTTP 200, `content-type: text/event-stream`. `/sse`는 끊기지 않는 스트림이라 `--max-time`이 없으면 멈춘 것처럼 보인다. 헤더만 받고 종료되면 정상이다. Windows PowerShell에서는 `$env:MCP_ACCESS_TOKEN`과 `curl.exe`를 쓴다.
 
-실패하면 순서대로 확인한다. (1) `docker logs`에 토큰 필수 오류가 있는지 (2) Docker Desktop이 켜져 있는지 (3) `MCP_HOST=0.0.0.0`인지 (4) 헤더 없이 호출해 401이 나오면 서버는 정상이고 토큰만 틀린 것이다.
+주의: `/sse`는 토큰이 없거나 틀려도 200을 돌려준다(2026-09 실측). 토큰 검사는 도구 호출 시 서버 미들웨어에서 이루어지며, 틀리면 호스트 쪽에 `Unauthorized: invalid or missing MCP access token` 오류가 난다. 따라서 이 단계의 200은 서버 생존 확인이고, 토큰이 맞는지는 6단계의 모의 조회로 확인한다.
+
+실패하면 순서대로 확인한다. (1) `docker logs`에 토큰 필수 오류가 있는지 (2) Docker 엔진(데몬)이 켜져 있는지(`docker ps`) (3) `MCP_HOST=0.0.0.0`인지 (4) 포트 매핑이 `127.0.0.1:3000:3000`인지.
 
 ### 5단계. AI 호스트 연결 (내가 쓰는 것만)
 공통 원리는 `mcp-remote` + SSE URL + Authorization 헤더다.
@@ -107,7 +109,7 @@ Claude Desktop 설정 파일 위치
 ```
 `YOUR_TOKEN_SAME_AS_ENV`는 `kis.env`의 `MCP_ACCESS_TOKEN`과 같은 값이다. 저장 후 앱을 완전히 종료하고 다시 실행한다. 커넥터 목록에 `kis-trade-mcp`가 보이면 성공이다.
 
-Cursor, Codex, ChatGPT(커넥터)는 각 제품의 MCP 설정에 같은 SSE URL과 Bearer 헤더를 넣는다. 화면은 달라도 검증 기준(`/sse` 200, 도구 호출)은 같다.
+Cursor, Codex는 각 제품의 MCP 설정에 같은 SSE URL과 Bearer 헤더를 넣는다. 화면은 달라도 검증 기준(도구 목록 표시, 6단계 모의 조회 성공)은 같다.
 
 ### 6단계. 기능 확인 (모의)
 호스트 채팅이나 MCP 클라이언트로 도구 목록이 보이는지 확인하고, `domestic_stock`의 현재가 조회를 종목코드 `005930`(모의)으로 호출한다. 성공하면 숫자 현재가를 보고한다. 실전 키가 자리표시자면 실전 조회는 `EGW00304` 같은 키 오류가 나므로, 모의 성공만으로 설치 검증을 PASS로 본다.

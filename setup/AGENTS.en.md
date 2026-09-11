@@ -12,8 +12,8 @@ You are going to install, start, and connect the Korea Investment & Securities (
 
 ### Goals
 1. Build the `kis-trade-mcp` Docker image and start the container.
-2. Confirm that `http://127.0.0.1:3000/sse` returns HTTP 200 when called with a Bearer token.
-3. Register the server in the MCP host I use (Claude Desktop, Cursor, Codex, or ChatGPT connectors).
+2. Confirm that `http://127.0.0.1:3000/sse` returns HTTP 200 (server alive).
+3. Register the server in the MCP host I use (Claude Desktop, Cursor, or Codex). ChatGPT connectors accept only a public HTTPS URL, so they are not used with this local server.
 4. Once tool calls work on the paper-trading account, fetch the current price of Samsung Electronics (005930) and show me the number.
 5. If you get stuck, report "step name + the exact command + the actual output or error", with secrets masked.
 
@@ -80,7 +80,9 @@ curl -sS --max-time 5 -D- -o /dev/null \
 ```
 Expected: HTTP 200 with `content-type: text/event-stream`. `/sse` is an endless stream, so without `--max-time` the command looks frozen; receiving the headers and exiting is success. In Windows PowerShell use `$env:MCP_ACCESS_TOKEN` and `curl.exe`.
 
-If it fails, check in order: (1) the token-required error in `docker logs`, (2) Docker Desktop is running, (3) `MCP_HOST=0.0.0.0`, (4) a call without the header returns 401, which means the server is fine and only the token is wrong.
+Note: `/sse` returns 200 even when the token is missing or wrong (measured September 2026). The token is checked by the server middleware at tool-call time; a wrong token surfaces on the host side as `Unauthorized: invalid or missing MCP access token`. So the 200 in this step only proves the server is alive; the token is verified by the paper-trading query in step 6.
+
+If it fails, check in order: (1) the token-required error in `docker logs`, (2) the Docker engine (daemon) is running (`docker ps`), (3) `MCP_HOST=0.0.0.0`, (4) the port mapping is `127.0.0.1:3000:3000`.
 
 ### Step 5. Connect the AI host (only the one I use)
 Common pattern: `mcp-remote` + the SSE URL + an Authorization header.
@@ -107,7 +109,7 @@ Claude Desktop config file
 ```
 `YOUR_TOKEN_SAME_AS_ENV` must equal `MCP_ACCESS_TOKEN` in `kis.env`. Quit the app completely and start it again. When `kis-trade-mcp` appears in the connector list, the connection works.
 
-For Cursor, Codex, or ChatGPT connectors, enter the same SSE URL and Bearer header in the product's MCP settings. The screens differ, but the acceptance test is the same: `/sse` returns 200 and tool calls succeed.
+For Cursor or Codex, enter the same SSE URL and Bearer header in the product's MCP settings. The screens differ, but the acceptance test is the same: the tool list is visible and the paper-trading query in step 6 succeeds.
 
 ### Step 6. Smoke test (paper account)
 From the host chat or an MCP client, confirm the tool list is visible, then call the current-price tool under `domestic_stock` for stock code `005930` on the paper account. Report the numeric price. If the live key is a placeholder, live queries fail with a key error such as `EGW00304`; treat a successful paper query as PASS for the installation.
