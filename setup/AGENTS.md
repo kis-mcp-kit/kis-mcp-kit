@@ -24,9 +24,10 @@
 
 ### 전제
 - OS는 Windows 10/11 또는 macOS다. 명령은 OS에 맞게 바꿔라.
-- 필요한 도구: Docker Desktop(실행 중), Node.js와 `npx`(호스트 연결용), 인터넷.
+- 필요한 도구: 실행 중인 Docker 엔진(Docker Desktop 권장, Colima·OrbStack도 가능), Node.js와 `npx`(호스트 연결용), 인터넷.
 - 한국투자증권: 모의투자 계좌, KIS Developers에서 발급한 모의용 App Key와 App Secret, HTS ID.
 - 실전 키나 계좌가 없으면 자리표시자를 그대로 두고 모의만 검증한다.
+- 네가 할 수 없는 일은 나에게 요청한다: Docker 엔진 설치와 첫 실행, 한투 계좌 개설과 키 발급, 비밀 값 제공, GUI 앱 재시작과 커넥터 확인.
 
 ### 1단계. 저장소 받기와 이미지 빌드
 ```bash

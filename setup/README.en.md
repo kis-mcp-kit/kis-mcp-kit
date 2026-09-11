@@ -6,13 +6,21 @@ How to run the Korea Investment & Securities (KIS) Trading MCP server on your ow
 
 You need
 - Windows 10/11 or macOS
-- Docker Desktop, installed and running
+- Docker Desktop, installed and running. The official guide recommends Docker Desktop, but it is not strictly required; any running Docker engine (Colima, OrbStack, etc.) works.
 - Node.js (it provides `npx`, used to connect the AI tool)
 - A KIS paper-trading account, the paper App Key and App Secret issued on KIS Developers, and your HTS ID
 
 Two rules
 - Never type the App Key, App Secret, account number, HTS ID, or MCP access token into a chat window or a repository. Keep them in a local file only.
 - Start with the paper account. You can finish the whole setup and verification without a live key.
+
+## What you must do yourself
+
+These four things cannot be delegated to an AI agent, so do them first.
+1. Install the Docker engine and start it once
+2. Open a KIS account (including the paper-trading account) and issue the App Key and App Secret on KIS Developers
+3. Install the AI tool and sign in
+4. After configuration, quit and relaunch the AI tool and check the connector list yourself
 
 ## 1. Clone the repository and build the image
 

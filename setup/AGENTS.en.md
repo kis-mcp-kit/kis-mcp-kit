@@ -24,9 +24,10 @@ You are going to install, start, and connect the Korea Investment & Securities (
 
 ### Prerequisites
 - OS: Windows 10/11 or macOS. Adapt commands to the OS.
-- Tools: Docker Desktop (running), Node.js with `npx` (for host connection), internet access.
+- Tools: a running Docker engine (Docker Desktop recommended; Colima or OrbStack also work), Node.js with `npx` (for host connection), internet access.
 - KIS: a paper-trading account, the paper App Key and App Secret issued on KIS Developers, and the HTS ID.
 - If there is no live key or account, keep the placeholders and verify with the paper account only.
+- Ask me for what you cannot do yourself: installing and first-starting the Docker engine, opening the KIS account and issuing keys, providing secrets, relaunching the GUI app and checking the connector list.
 
 ### Step 1. Clone and build
 ```bash

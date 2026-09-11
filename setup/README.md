@@ -6,13 +6,21 @@
 
 준비물
 - Windows 10/11 또는 macOS
-- Docker Desktop (설치 후 실행 상태)
+- Docker Desktop (설치 후 실행 상태). 공식 안내는 Docker Desktop을 권장하지만 필수는 아니며, Colima·OrbStack 같은 다른 Docker 엔진이 돌아가고 있어도 됩니다.
 - Node.js (AI 도구 연결에 필요한 `npx` 포함)
 - 한국투자증권 모의투자 계좌, KIS Developers에서 발급한 모의용 App Key와 App Secret, HTS ID
 
 꼭 지킬 것
 - App Key, App Secret, 계좌번호, HTS ID, MCP 접속 토큰은 채팅창이나 저장소에 적지 마세요. 로컬 파일에만 둡니다.
 - 처음에는 모의투자 계좌만 씁니다. 실전 키가 없어도 설치와 검증은 끝까지 할 수 있습니다.
+
+## 사람이 직접 해야 하는 일
+
+아래 네 가지는 AI 에이전트에게 맡길 수 없으니 미리 해 두세요.
+1. Docker 엔진 설치와 첫 실행
+2. 한국투자증권 계좌 개설(모의투자 계좌 포함)과 KIS Developers에서 App Key·App Secret 발급
+3. AI 도구 설치와 로그인
+4. 설정 후 AI 도구를 완전히 종료했다가 다시 켜고 커넥터를 눈으로 확인
 
 ## 1. 저장소 받기와 이미지 만들기
 
