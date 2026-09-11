@@ -53,7 +53,9 @@ MCP_ACCESS_TOKEN=<강한 랜덤 토큰, 네가 생성해도 됨>
 KIS_APP_KEY=your_app_key
 KIS_APP_SECRET=your_app_secret
 KIS_ACCT_STOCK=your_account
+# 선물옵션 계좌(KIS_ACCT_FUTURE, KIS_PAPER_FUTURE)는 이 책 범위에서 쓰지 않으므로 생략 가능
 ```
+공식 Readme는 실전 App Key/Secret을 "필수"로 적고 있지만, 실측(2026-09-11, macOS) 결과 실전 값이 placeholder여도 서버는 기동하고 모의 조회는 동작한다. 실전 값이 없으면 placeholder를 그대로 두고 모의만 검증한다.
 
 **중요 (공식 Readme 2026-07 이후 / 옛 원고에 자주 빠짐)**
 - SSE 모드에서는 **`MCP_ACCESS_TOKEN`이 필수**다. 없으면 대략 이런 로그로 죽는다:
@@ -70,15 +72,16 @@ docker run -d --name kis-trade-mcp \
   kis-trade-mcp
 docker logs kis-trade-mcp
 ```
+정상이면 로그 끝에 `Uvicorn running on http://0.0.0.0:3000` 계열 문장이 보인다. 3000번 포트를 다른 프로그램이 쓰고 있으면 `-p 127.0.0.1:3001:3000`처럼 호스트 쪽 번호만 바꾸고, 아래 검증·연결 URL도 `3001`로 맞춘다. Windows `cmd`에서는 `\` 줄 이음 대신 `^`를 쓰거나 한 줄로 적는다.
 
 ### 기동 검증
 토큰은 변수/파일에서만 읽고 출력하지 마라.
 ```bash
-curl -sS -D- -o /dev/null \
+curl -sS --max-time 5 -D- -o /dev/null \
   -H "Authorization: Bearer $MCP_ACCESS_TOKEN" \
   http://127.0.0.1:3000/sse
 ```
-기대: HTTP 200, `content-type` 이 `text/event-stream` 계열.
+기대: HTTP 200, `content-type` 이 `text/event-stream` 계열. (`/sse`는 끊기지 않는 스트림이라 `--max-time` 없이 실행하면 커서가 멈춘 것처럼 보인다. 헤더만 받고 종료되면 정상.) Windows PowerShell에서는 `$MCP_ACCESS_TOKEN` 대신 `$env:MCP_ACCESS_TOKEN`, `curl.exe`를 쓴다.
 
 실패 시:
 1) `docker logs`에 토큰 필수 오류가 있는지
