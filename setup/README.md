@@ -1,101 +1,95 @@
-# KIS Trading MCP 설치 · 연결 프롬프트 (AI에게 그대로 붙여넣기)
+# KIS Trading MCP 설치·연결 가이드 (사람용)
 
-아래 블록 전체를 복사해서 AI(Claude / ChatGPT / Cursor 등)에게 붙여 넣고 실행을 요청하세요.
-**앱 키 · 시크릿 · 계좌번호 · HTS ID · MCP 토큰은 채팅에 직접 쓰지 마세요.** AI가 안전한 입력(카드/폼/로컬 `.env`)으로 받도록 하세요.
+한국투자증권 KIS Trading MCP 서버를 내 컴퓨터에 띄우고 Claude Desktop 같은 AI 도구에 연결하는 방법입니다. 30분 정도 걸립니다. Claude Code, Claude Cowork, Codex CLI, Cursor CLI처럼 내 컴퓨터에서 명령을 실행하는 AI 에이전트에게 대신 시키고 싶다면 [AGENTS.md](AGENTS.md)의 프롬프트를 붙여 넣으세요. English version: [README.en.md](README.en.md).
 
----
+## 시작하기 전에
 
-## 복사 시작
+준비물
+- Windows 10/11 또는 macOS
+- Docker Desktop (설치 후 실행 상태)
+- Node.js (AI 도구 연결에 필요한 `npx` 포함)
+- 한국투자증권 모의투자 계좌, KIS Developers에서 발급한 모의용 App Key와 App Secret, HTS ID
 
-너는 내 컴퓨터에서 **한국투자증권 KIS Trading MCP** 설치·기동·연결을 끝까지 수행한다.
-나는 자연어로만 지시하고, 명령·파일·검증은 네가 한다.
+꼭 지킬 것
+- App Key, App Secret, 계좌번호, HTS ID, MCP 접속 토큰은 채팅창이나 저장소에 적지 마세요. 로컬 파일에만 둡니다.
+- 처음에는 모의투자 계좌만 씁니다. 실전 키가 없어도 설치와 검증은 끝까지 할 수 있습니다.
 
-### 목표
-1. Docker로 `kis-trade-mcp` 이미지를 빌드하고 컨테이너를 띄운다.
-2. `http://127.0.0.1:3000/sse` 가 Bearer 토큰과 함께 **HTTP 200** 인지 확인한다.
-3. (가능하면) MCP 호스트에 서버를 등록한다. 호스트는 Claude Desktop / ChatGPT / Cursor 중 내가 쓰는 것.
-4. 모의투자 기준으로 도구 호출이 되면 **삼성전자(005930) 현재가**를 조회해 숫자를 보여 준다.
-5. 막히면 **절/단계 이름 + 실행한 명령 + 실제 출력/오류**(비밀 값은 마스킹)로 정리한다.
+## 1. 저장소 받기와 이미지 만들기
 
-### 절대 금지
-- 앱 키 / 앱 시크릿 / 계좌번호 / HTS ID / `MCP_ACCESS_TOKEN` 을 채팅·스크린샷·로그 인용에 원문으로 넣지 말 것.
-- 실전 주문·이체를 임의로 실행하지 말 것. 학습 단계는 **모의(demo/paper)** 만.
-- 내가 채팅에 비밀을 붙여 넣으면 **쓰지 말고** 안전한 입력으로 다시 받아라.
+터미널(Windows는 명령 프롬프트 또는 PowerShell, macOS는 터미널)에서 차례로 실행합니다.
 
-### 전제 확인
-- OS: Windows 10/11 또는 macOS. (명령만 OS에 맞게 바꿔라.)
-- 필요 도구: Docker Desktop(실행 중), Node.js/`npx`(호스트 연결 시), 인터넷.
-- 한투: 모의 계좌 + KIS Developers **모의** App Key / App Secret + HTS ID.
-- 실전 키/계좌가 없으면 placeholder로 두고 **모의만** 검증해도 된다.
-
-### 저장소
 ```bash
 git clone --depth 1 https://github.com/koreainvestment/open-trading-api.git
 cd "open-trading-api/MCP/Kis Trading MCP"
 docker build -t kis-trade-mcp .
 ```
-(zip을 쓰려면 공식 main zip을 받아 같은 폴더로 들어가도 된다. 한글 파일명 unzip 오류가 나면 git clone을 써라.)
 
-### 환경 변수 파일 (권장: `--env-file`)
-프로젝트 밖, 동기화 폴더가 아닌 곳에 `kis.env`를 만들고 권한을 제한한다. Git에 올리지 마라.
+빌드는 몇 분 걸립니다. zip으로 내려받아도 되지만, 한글 파일명 때문에 압축 해제가 실패하면 위처럼 `git clone`을 쓰세요.
 
-필수 예 (값은 내가 안전하게 제공한다):
+## 2. 환경 변수 파일 만들기
+
+키와 계좌 정보는 명령줄에 직접 적지 말고 파일 하나에 모읍니다. 프로젝트 폴더 밖, 클라우드 동기화가 안 되는 곳(예: 내 문서 아래 별도 폴더)에 `kis.env`라는 이름으로 만들고 아래 내용을 채웁니다.
+
 ```env
-KIS_PAPER_APP_KEY=...
-KIS_PAPER_APP_SECRET=...
-KIS_HTS_ID=...
-KIS_PAPER_STOCK=...
+KIS_PAPER_APP_KEY=모의용 App Key
+KIS_PAPER_APP_SECRET=모의용 App Secret
+KIS_HTS_ID=HTS 아이디
+KIS_PAPER_STOCK=모의투자 계좌번호
 KIS_PROD_TYPE=01
 MCP_TYPE=sse
 MCP_HOST=0.0.0.0
-MCP_ACCESS_TOKEN=<강한 랜덤 토큰, 네가 생성해도 됨>
-# 실전이 있으면 채우고, 없으면 your_app_key 등 placeholder 유지
+MCP_ACCESS_TOKEN=직접 정한 긴 무작위 문자열(영문·숫자 30자 이상)
+# 실전 값이 있으면 채우고, 없으면 아래 세 줄은 그대로 둡니다
 KIS_APP_KEY=your_app_key
 KIS_APP_SECRET=your_app_secret
 KIS_ACCT_STOCK=your_account
-# 선물옵션 계좌(KIS_ACCT_FUTURE, KIS_PAPER_FUTURE)는 이 책 범위에서 쓰지 않으므로 생략 가능
 ```
-공식 Readme는 실전 App Key/Secret을 "필수"로 적고 있지만, 실측(2026-09-11, macOS) 결과 실전 값이 placeholder여도 서버는 기동하고 모의 조회는 동작한다. 실전 값이 없으면 placeholder를 그대로 두고 모의만 검증한다.
 
-**중요 (공식 Readme 2026-07 이후 / 옛 원고에 자주 빠짐)**
-- SSE 모드에서는 **`MCP_ACCESS_TOKEN`이 필수**다. 없으면 대략 이런 로그로 죽는다:
-  `MCP_ACCESS_TOKEN must be set when MCP_TYPE is 'sse'.`
-- Docker에서 호스트로 포트 포워딩하려면 컨테이너 안 바인딩이 `0.0.0.0`이어야 하므로 **`MCP_HOST=0.0.0.0`**.
-- 호스트 포트는 가능하면 `-p 127.0.0.1:3000:3000` (로컬만).
+세 가지를 기억하세요.
+- `MCP_ACCESS_TOKEN`은 AI 도구가 이 서버에 들어올 때 쓰는 비밀번호입니다. 2026년 7월부터 필수가 되었습니다. 비워 두면 서버가 켜지자마자 꺼집니다.
+- `MCP_HOST=0.0.0.0`이어야 컨테이너 밖(내 컴퓨터)에서 서버에 접속할 수 있습니다.
+- 선물옵션 계좌 항목(`KIS_ACCT_FUTURE`, `KIS_PAPER_FUTURE`)은 쓰지 않으므로 넣지 않아도 됩니다. 실전 키가 자리표시자여도 서버는 켜지고 모의 조회는 됩니다(2026년 9월 실측).
 
-### 컨테이너 실행
+파일을 만든 뒤에는 본인만 읽을 수 있게 권한을 제한하고, Git이나 메신저에 올리지 마세요.
+
+## 3. 서버 켜기
+
 ```bash
-docker rm -f kis-trade-mcp 2>/dev/null || true
 docker run -d --name kis-trade-mcp \
   -p 127.0.0.1:3000:3000 \
-  --env-file /절대경로/kis.env \
+  --env-file /kis.env의/절대경로 \
   kis-trade-mcp
 docker logs kis-trade-mcp
 ```
-정상이면 로그 끝에 `Uvicorn running on http://0.0.0.0:3000` 계열 문장이 보인다. 3000번 포트를 다른 프로그램이 쓰고 있으면 `-p 127.0.0.1:3001:3000`처럼 호스트 쪽 번호만 바꾸고, 아래 검증·연결 URL도 `3001`로 맞춘다. Windows `cmd`에서는 `\` 줄 이음 대신 `^`를 쓰거나 한 줄로 적는다.
 
-### 기동 검증
-토큰은 변수/파일에서만 읽고 출력하지 마라.
+Windows 명령 프롬프트에서는 줄 끝의 `\`를 `^`로 바꾸거나 한 줄로 이어 적습니다. 로그 끝에 `Uvicorn running on http://0.0.0.0:3000` 같은 문장이 보이면 정상입니다. 같은 이름의 컨테이너가 이미 있다는 오류가 나면 `docker rm -f kis-trade-mcp`로 지운 뒤 다시 실행합니다. 3000번 포트를 다른 프로그램이 쓰고 있으면 `-p 127.0.0.1:3001:3000`처럼 앞 번호만 바꾸고, 이후 주소도 3001로 맞춥니다.
+
+`127.0.0.1:3000`은 내 컴퓨터 안에서만 접속되게 묶어 두는 설정입니다. 실전 주문 기능까지 들어 있는 서버이므로 이 제한은 풀지 마세요.
+
+## 4. 잘 켜졌는지 확인하기
+
+토큰 값을 넣어 서버에 한 번 접속해 봅니다. `<토큰>` 자리에 `kis.env`의 `MCP_ACCESS_TOKEN` 값을 넣습니다.
+
+macOS 또는 Windows PowerShell:
 ```bash
-curl -sS --max-time 5 -D- -o /dev/null \
-  -H "Authorization: Bearer $MCP_ACCESS_TOKEN" \
-  http://127.0.0.1:3000/sse
+curl -sS --max-time 5 -D- -o /dev/null -H "Authorization: Bearer <토큰>" http://127.0.0.1:3000/sse
 ```
-기대: HTTP 200, `content-type` 이 `text/event-stream` 계열. (`/sse`는 끊기지 않는 스트림이라 `--max-time` 없이 실행하면 커서가 멈춘 것처럼 보인다. 헤더만 받고 종료되면 정상.) Windows PowerShell에서는 `$MCP_ACCESS_TOKEN` 대신 `$env:MCP_ACCESS_TOKEN`, `curl.exe`를 쓴다.
 
-실패 시:
-1) `docker logs`에 토큰 필수 오류가 있는지
-2) Docker Desktop이 켜져 있는지
-3) `MCP_HOST=0.0.0.0` 인지
-를 먼저 본다.
+`HTTP/1.1 200 OK`와 `content-type: text/event-stream`이 보이면 성공입니다. `/sse`는 끊기지 않고 계속 열려 있는 통로라서 `--max-time 5`가 없으면 명령이 멈춘 것처럼 보이는데, 5초 뒤 저절로 끝나면 정상입니다. Windows PowerShell에서는 `curl` 대신 `curl.exe`라고 적으세요.
 
-### AI 호스트 연결 (쓰는 것만)
-공통: `mcp-remote` + SSE URL + Authorization 헤더.
+토큰 없이 호출하면 401이 나옵니다. 401은 서버가 살아 있고 토큰만 틀렸다는 뜻이라 오히려 좋은 신호입니다.
 
-**Claude Desktop (macOS)**  
-`~/Library/Application Support/Claude/claude_desktop_config.json`  
-**Claude Desktop (Windows)**  
-`%APPDATA%\Claude\claude_desktop_config.json`
+## 5. AI 도구에 연결하기
+
+원리는 하나입니다. AI 도구가 `mcp-remote`라는 작은 프로그램으로 `http://localhost:3000/sse`에 접속하되, 4단계에서 쓴 것과 같은 토큰을 헤더에 실어 보냅니다.
+
+### Claude Desktop
+
+설정 파일을 엽니다. Claude Desktop에서 설정 → 개발자 → 구성 편집을 누르면 파일이 열립니다. 직접 찾으려면 아래 위치입니다.
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+파일 내용을 아래처럼 만들고, `YOUR_TOKEN_SAME_AS_ENV` 자리에 `kis.env`의 `MCP_ACCESS_TOKEN` 값을 그대로 넣습니다.
 
 ```json
 {
@@ -113,33 +107,36 @@ curl -sS --max-time 5 -D- -o /dev/null \
   }
 }
 ```
-설정 후 앱을 **완전 종료 후 재시작**. 커넥터에 `kis-trade-mcp`가 보이면 연결 성공.
 
-**Cursor / ChatGPT**  
-각 제품의 MCP/커넥터 UI에 동일하게 SSE URL + Bearer를 넣는다.  
-호스트 UI가 달라도 MCP 서버 검증 기준(`/sse` 200 + 도구 호출)은 같다.
+저장한 뒤 Claude Desktop을 완전히 종료(파일 → 종료)하고 다시 실행합니다. 채팅창의 커넥터 목록에 `kis-trade-mcp`가 보이면 연결된 것입니다.
 
-### 기능 스모크 (모의)
-호스트 채팅 또는 MCP 클라이언트로:
-- 도구 목록이 보이는지
-- `domestic_stock` / 현재가 조회 / 종목코드 `005930` (모의)
-성공 시 **숫자 현재가**를 보고한다.  
-실전 키가 placeholder면 real 조회는 `EGW00304` 등 키 오류가 날 수 있으니, 그 경우 **모의 성공만으로 설치 검증 PASS**로 본다.
+### Cursor, Codex, ChatGPT
 
-### 보안
-- `.env` / `kis.env`는 본인만 읽기, 클라우드 동기화·화면공유 금지.
-- 노출 의심 시 KIS Developers에서 키 재발급.
-- PC 수리·양도 전 컨테이너·env·설정 삭제.
+각 제품의 MCP(커넥터) 설정 화면에 같은 주소 `http://localhost:3000/sse`와 같은 헤더 `Authorization: Bearer <토큰>`을 넣습니다. 화면은 달라도 확인 방법은 같습니다. 서버가 200을 돌려주고, 도구 목록이 보이면 됩니다.
 
-### 나에게 보고할 형식
-```
-[단계] ...
-[명령] ...
-[결과] PASS/FAIL
-[출력 요약] (비밀 마스킹)
-[다음 액션] ...
-```
+## 6. 동작 확인
 
-자, 내 OS를 확인한 뒤 1단계부터 진행하고, 비밀이 필요하면 안전한 입력으로만 요청해라.
+AI 도구 채팅창에 "모의계좌로 삼성전자 현재가 알려줘"라고 입력합니다. 숫자 현재가가 돌아오면 설치가 끝난 것입니다. 실전 키를 자리표시자로 둔 상태에서 실전 조회를 시키면 `EGW00304` 같은 키 오류가 나는데, 이는 정상이며 모의 조회 성공만으로 설치 검증은 끝입니다.
 
-## 복사 끝
+## 문제가 생겼을 때
+
+| 증상 | 원인 | 해결 |
+| --- | --- | --- |
+| 컨테이너가 켜지자마자 꺼짐. 로그에 `MCP_ACCESS_TOKEN must be set when MCP_TYPE is 'sse'` | 접속 토큰을 넣지 않음 | `kis.env`에 `MCP_ACCESS_TOKEN`을 채우고 3단계를 다시 실행 |
+| `curl`이 연결 거부 | Docker Desktop이 꺼져 있거나 컨테이너가 죽음 | Docker Desktop 실행 후 `docker ps`로 확인, 없으면 3단계 재실행 |
+| 서버는 켜졌는데 밖에서 접속 불가 | `MCP_HOST`가 `127.0.0.1` | `MCP_HOST=0.0.0.0`으로 고치고 컨테이너 재생성 |
+| `curl` 401 | 토큰이 다르거나 헤더 누락 | `kis.env`와 명령의 토큰이 같은지 확인 |
+| 포트가 이미 사용 중 | 3000번을 다른 프로그램이 점유 | `-p 127.0.0.1:3001:3000`으로 바꾸고 주소도 3001로 |
+| Claude Desktop 커넥터에 안 보임 | 설정 파일 JSON 오류, 토큰 불일치, 앱을 완전히 종료하지 않음 | 파일 문법 확인(쉼표·따옴표), 토큰 대조, 파일 → 종료 후 재실행 |
+| 실전 조회에서 `EGW00304` | 실전 App Secret이 자리표시자 | 정상. 모의 조회로 검증 |
+
+## 보안
+
+- `kis.env`는 본인만 읽을 수 있게 하고, 클라우드 동기화 폴더와 화면 공유를 피하세요.
+- 키가 노출된 것 같으면 KIS Developers에서 재발급합니다.
+- 컴퓨터를 수리 맡기거나 넘기기 전에 컨테이너(`docker rm -f kis-trade-mcp`), `kis.env`, AI 도구 설정을 지웁니다.
+
+## 참고
+
+- 공식 저장소: https://github.com/koreainvestment/open-trading-api (MCP/Kis Trading MCP)
+- 한투 공식 연결 안내: 같은 저장소의 "MCP AI 도구 연결 방법.md" (Claude Desktop, Cursor)
