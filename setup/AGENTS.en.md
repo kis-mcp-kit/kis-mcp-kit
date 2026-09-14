@@ -4,6 +4,15 @@ Copy everything between "COPY START" and "COPY END" and paste it into an AI agen
 
 Never type your App Key, App Secret, account number, HTS ID, or MCP access token into the chat. Let the agent collect them through a local `.env` file or another safe input.
 
+## What a human must do first (before pasting)
+
+The agent cannot do these two things for you. Once they are done, everything else (packages, the Docker engine, Node.js, git clone, build, server start, price query) proceeds from this prompt alone (verified from a blank PC on Windows and macOS with Cursor and Codex, September 2026).
+
+1. **Log in to the agent.** Sign in interactively to the agent you will use: Cursor agent, Codex CLI, Claude Code, and so on. The login cannot be scripted; running this prompt without it stops at the first command.
+2. **Create `kis.env` in advance.** Put a human-made `kis.env` in the working folder where the agent runs. Minimum contents: the KIS paper-trading App Key and App Secret, the HTS ID, the paper account number, `MCP_TYPE=sse`, `MCP_HOST=0.0.0.0`, and an `MCP_ACCESS_TOKEN` you chose yourself (30+ alphanumeric characters). The agent must not invent tokens or keys, and must not print the values into the chat.
+
+Installing and first-starting the Docker engine, opening the KIS account and issuing keys, and relaunching the GUI app to check the connector list also remain human tasks.
+
 ---
 
 ## COPY START
@@ -17,6 +26,11 @@ You are going to install, start, and connect the Korea Investment & Securities (
 4. Once tool calls work on the paper-trading account, fetch the current price of Samsung Electronics (005930) and show me the number.
 5. If you get stuck, report "step name + the exact command + the actual output or error", with secrets masked.
 
+### Success criteria
+- `http://127.0.0.1:3000/sse` returns HTTP 200 with `content-type: text/event-stream` (server alive).
+- In the paper environment, a current-price query for `005930` (Samsung Electronics) returns a number (for example `stck_prpr=259500`). This proves the token is right as well.
+- Registering a GUI MCP host (Claude Desktop, etc.) is optional. When the two checks above pass, the installation counts as PASS.
+
 ### Hard rules
 - Never put the App Key, App Secret, account number, HTS ID, or `MCP_ACCESS_TOKEN` in chat, screenshots, or quoted logs.
 - Never place real orders or transfers on your own. The learning phase uses the paper (mock) account only.
@@ -27,7 +41,8 @@ You are going to install, start, and connect the Korea Investment & Securities (
 - Tools: a running Docker engine (Docker Desktop recommended; Colima or OrbStack also work), Node.js with `npx` (for host connection), internet access.
 - KIS: a paper-trading account, the paper App Key and App Secret issued on KIS Developers, and the HTS ID.
 - If there is no live key or account, keep the placeholders and verify with the paper account only.
-- Ask me for what you cannot do yourself: installing and first-starting the Docker engine, opening the KIS account and issuing keys, providing secrets, relaunching the GUI app and checking the connector list.
+- I have already placed `kis.env` in the working folder. Do not generate tokens or keys yourself and do not print the values. If the file is missing or a field is empty, stop and ask me.
+- Ask me for what you cannot do yourself: logging in to the agent, installing and first-starting the Docker engine, opening the KIS account and issuing keys, providing secrets, relaunching the GUI app and checking the connector list.
 
 ### Step 1. Clone and build
 ```bash
@@ -37,8 +52,8 @@ docker build -t kis-trade-mcp .
 ```
 A zip download also works, but if unzip fails on Korean file names, use `git clone`.
 
-### Step 2. Create the environment file
-Create `kis.env` outside the project folder and outside any cloud-synced folder, restrict it to the current user, and never commit it. I will provide the values through a safe channel.
+### Step 2. Check the environment file
+Confirm that the `kis.env` I prepared exists in the working folder and that every key below is present (check key names only; never print values). If it is missing or a field is empty, ask me. Keep the file readable by the current user only and never commit it.
 ```env
 KIS_PAPER_APP_KEY=...
 KIS_PAPER_APP_SECRET=...
@@ -47,7 +62,7 @@ KIS_PAPER_STOCK=...
 KIS_PROD_TYPE=01
 MCP_TYPE=sse
 MCP_HOST=0.0.0.0
-MCP_ACCESS_TOKEN=<a strong random token you generate, 30+ alphanumeric characters>
+MCP_ACCESS_TOKEN=<a value I chose myself, 30+ alphanumeric characters>
 # fill in live values if I have them; otherwise keep the placeholders
 KIS_APP_KEY=your_app_key
 KIS_APP_SECRET=your_app_secret
@@ -70,6 +85,8 @@ docker run -d --name kis-trade-mcp \
 docker logs kis-trade-mcp
 ```
 A healthy start ends with a line like `Uvicorn running on http://0.0.0.0:3000`. If port 3000 is taken, change only the host side, e.g. `-p 127.0.0.1:3001:3000`, and use 3001 in every URL below. In Windows `cmd`, use `^` instead of `\` for line continuation or write the command on one line.
+
+On Windows over SSH or in an unattended session, if `docker` cannot reach Docker Desktop (it depends on the GUI and a named pipe), install `docker.io` (or Docker CE) inside a WSL2 distribution and build and run there. WSL2 distributions have separate file systems but share `localhost` (127.0.0.1) with the Windows host, so running several distributions at once makes port 3000 collide; publish each on a different host port (3001, 3002, ...).
 
 ### Step 4. Verify the server
 Read the token from the file or a variable; never print it.

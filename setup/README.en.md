@@ -137,6 +137,9 @@ In the AI tool's chat, type "Show me the current price of Samsung Electronics on
 | Port already in use | Another program uses 3000 | Use `-p 127.0.0.1:3001:3000` and 3001 in the addresses |
 | Not shown in Claude Desktop connectors | JSON syntax error, token mismatch, app not fully quit | Check commas and quotes, compare tokens, File → Quit and relaunch |
 | `EGW00304` on a live query | Live App Secret is a placeholder | Expected; verify with the paper account |
+| On Windows over SSH or unattended, `docker` cannot reach Docker Desktop | Docker Desktop depends on the GUI and a named pipe | Install `docker.io` (Docker CE) inside a WSL2 distribution and build/run there |
+| Several WSL2 distributions collide on port 3000 | WSL2 distributions have separate file systems but share `localhost` with the Windows host | Publish each on a different host port (`-p 127.0.0.1:3001:3000`, etc.) |
+| You delegated to an AI agent and it stops at the first command | The agent (Cursor, Codex, Claude Code) is not logged in, or `kis.env` is not in the working folder | Log in interactively and create `kis.env` first, then restart (see the top of [AGENTS.en.md](AGENTS.en.md)) |
 
 ## Security
 
