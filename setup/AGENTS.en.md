@@ -6,7 +6,7 @@ Never type your App Key, App Secret, account number, HTS ID, or MCP access token
 
 ## What a human must do first (before pasting)
 
-The agent cannot do these two things for you. Once they are done, everything else (packages, the Docker engine, Node.js, git clone, build, server start, price query) proceeds from this prompt alone (verified from a blank PC through a price query on Windows and macOS with Cursor and Codex in September 2026; orders, revisions, and cancellations were verified on a patched server with a paper account in October 2026).
+The agent cannot do these two things for you. Once they are done, everything else (packages, Node.js, git clone, build, server start, price query) proceeds from this prompt alone (verified from a blank PC through a price query on Windows and macOS with Cursor and Codex in September 2026; orders, revisions, and cancellations were verified on a patched server with a paper account in October 2026). Installing and first-starting the Docker engine needs administrator rights, so a person does it (see below).
 
 1. **Log in to the agent.** Sign in interactively to the agent you will use: Cursor agent, Codex CLI, Claude Code, and so on. The login cannot be scripted; running this prompt without it stops at the first command.
 2. **Create `kis.env` in advance.** Put a human-made `kis.env` in the working folder where the agent runs. Minimum contents: the KIS paper-trading App Key and App Secret, the HTS ID, the paper account number, `MCP_TYPE=sse`, `MCP_HOST=0.0.0.0`, and an `MCP_ACCESS_TOKEN` you chose yourself (30+ alphanumeric characters). The agent must not invent tokens or keys, and must not print the values into the chat.
