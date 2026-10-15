@@ -6,7 +6,7 @@
 
 ## 사람이 먼저 해야 할 일 (붙여넣기 전에)
 
-아래 두 가지는 AI 에이전트가 대신할 수 없습니다. 이 둘만 끝내 두면 나머지(패키지 설치, Docker 엔진, Node.js, git clone, 빌드, 서버 기동, 시세 조회)는 이 프롬프트만으로 진행됩니다(2026-09 Windows·macOS에서 Cursor·Codex로 빈 PC부터 확인).
+아래 두 가지는 AI 에이전트가 대신할 수 없습니다. 이 둘만 끝내 두면 나머지(패키지 설치, Docker 엔진, Node.js, git clone, 빌드, 서버 기동, 시세 조회)는 이 프롬프트만으로 진행됩니다(2026-09 Windows·macOS에서 Cursor·Codex로 빈 PC부터 시세 조회까지 확인, 주문·정정·취소는 2026-10 패치를 넣은 서버에서 모의로 확인).
 
 1. **AI 에이전트 로그인.** Cursor agent, Codex CLI, Claude Code 등 쓰려는 에이전트에 사람이 직접 대화형으로 로그인해 둡니다. 로그인은 스크립트로 자동화되지 않으며, 로그인 없이 이 프롬프트를 돌리면 첫 명령에서 멈춥니다.
 2. **`kis.env` 미리 만들기.** 에이전트를 실행할 작업 폴더에 사람이 만든 `kis.env`를 둡니다. 최소 항목은 KIS 모의투자 App Key·App Secret, HTS ID, 모의 계좌번호, `MCP_TYPE=sse`, `MCP_HOST=0.0.0.0`, 그리고 사람이 직접 정한 `MCP_ACCESS_TOKEN`(영문·숫자 30자 이상)입니다. 에이전트는 토큰이나 키를 스스로 만들지 않고, 값을 채팅에 출력하지도 않습니다.
@@ -23,13 +23,14 @@
 1. Docker로 `kis-trade-mcp` 이미지를 빌드하고 컨테이너를 띄운다.
 2. `http://127.0.0.1:3000/sse`가 HTTP 200을 돌려주는지(서버 생존) 확인한다.
 3. 내가 쓰는 MCP 호스트(Claude Desktop, Cursor, Codex 중 하나)에 서버를 등록한다. ChatGPT 커넥터는 공개 HTTPS 주소만 받으므로 이 로컬 서버에는 쓰지 않는다.
-4. 모의투자 기준으로 도구 호출이 되면 삼성전자(005930) 현재가를 조회해 숫자로 보여 준다.
+4. 모의투자 기준으로 도구 호출이 되면 삼성전자(005930) 현재가를 조회해 숫자로 보여 주고, 주문 기능도 쓸 거면 현재가보다 20% 낮은 지정가 1주를 주문한 뒤 바로 취소해 확인한다.
 5. 막히면 "단계 이름 + 실행한 명령 + 실제 출력 또는 오류"를 정리해 보고한다. 비밀 값은 마스킹한다.
 
 ### 성공 기준
 - `http://127.0.0.1:3000/sse`가 HTTP 200과 `content-type: text/event-stream`을 돌려준다(서버 생존).
 - 모의(paper) 환경에서 `005930`(삼성전자) 현재가 조회가 숫자로 돌아온다(예: `stck_prpr=259500`). 이것이 토큰까지 맞았다는 증거다.
-- GUI MCP 호스트(Claude Desktop 등) 등록은 선택이다. 위 두 가지가 통과하면 설치 검증은 PASS로 본다.
+- 주문 기능도 확인할 때는 모의계좌에서 현재가보다 20% 낮은 지정가 1주 주문의 주문번호를 확인하고 바로 취소한 뒤 미체결 0을 확인한다. `CANO` 오류가 나면 FAIL이다.
+- GUI MCP 호스트(Claude Desktop 등) 등록은 선택이다. 서버 생존과 모의 현재가 조회가 통과하면 설치 검증은 PASS로 본다.
 
 ### 절대 지킬 것
 - 앱 키, 앱 시크릿, 계좌번호, HTS ID, `MCP_ACCESS_TOKEN`을 채팅, 스크린샷, 로그 인용에 원문으로 넣지 않는다.
@@ -47,9 +48,16 @@
 ### 1단계. 저장소 받기와 이미지 빌드
 ```bash
 git clone --depth 1 https://github.com/koreainvestment/open-trading-api.git
-cd "open-trading-api/MCP/Kis Trading MCP"
+cd open-trading-api
+curl -fsSL -o pr85.diff https://raw.githubusercontent.com/kis-mcp-kit/kis-mcp-kit/main/patches/pr85.diff
+git apply pr85.diff
+cd "MCP/Kis Trading MCP"
 docker build -t kis-trade-mcp .
 ```
+공식 서버에는 주문·정정·취소가 `order_cash() got an unexpected keyword argument 'CANO'`로 실패하는 결함이 있고, 이를 고치는 PR #85는 아직 합쳐지지 않았다. 같은 PR은 같은 날 실전·모의 호출의 접속 토큰 저장 파일이 서로 겹치는 문제도 고친다.
+
+Windows PowerShell에서는 `curl` 대신 `curl.exe`를 쓴다. 공식 저장소에 PR #85가 합쳐져 `git apply`가 실패하면 `git apply --reverse --check pr85.diff`가 조용히 끝나는지 확인하고, 그러면 패치가 이미 들어간 것이므로 건너뛴다. 이미 패치 없이 빌드했다면 패치를 넣고 이미지를 다시 빌드한 뒤 3단계에서 컨테이너를 새로 만든다.
+
 zip으로 받아도 되지만 한글 파일명 때문에 압축 해제 오류가 나면 `git clone`을 쓴다.
 
 ### 2단계. 환경 변수 파일 확인
@@ -69,6 +77,8 @@ KIS_APP_SECRET=your_app_secret
 KIS_ACCT_STOCK=your_account
 # 선물옵션 계좌(KIS_ACCT_FUTURE, KIS_PAPER_FUTURE)는 쓰지 않으므로 생략한다
 ```
+`KIS_PAPER_STOCK`은 모의투자 사이트 [나의계좌] 탭에 보이는 모의투자 계좌번호 8자리다.
+
 꼭 알아 둘 것(공식 Readme 2026-07 변경, 옛 안내서에는 자주 빠져 있음):
 - SSE 모드에서는 `MCP_ACCESS_TOKEN`이 필수다. 없으면 컨테이너가 바로 종료되며 로그에 `MCP_ACCESS_TOKEN must be set when MCP_TYPE is 'sse'`가 남는다.
 - 컨테이너 밖에서 접속하려면 `MCP_HOST=0.0.0.0`이어야 한다.
@@ -126,10 +136,34 @@ Claude Desktop 설정 파일 위치
 ```
 `YOUR_TOKEN_SAME_AS_ENV`는 `kis.env`의 `MCP_ACCESS_TOKEN`과 같은 값이다. 저장 후 앱을 완전히 종료하고 다시 실행한다. 커넥터 목록에 `kis-trade-mcp`가 보이면 성공이다.
 
-Cursor, Codex는 각 제품의 MCP 설정에 같은 SSE URL과 Bearer 헤더를 넣는다. 화면은 달라도 검증 기준(도구 목록 표시, 6단계 모의 조회 성공)은 같다.
+Codex CLI는 macOS·Linux의 `~/.codex/config.toml`, Windows의 `%USERPROFILE%\.codex\config.toml`에 아래 설정을 넣는다.
+
+```toml
+[mcp_servers.kis-trade-mcp]
+command = "npx"
+args = ["-y", "mcp-remote", "http://localhost:3000/sse", "--header", "Authorization: Bearer YOUR_TOKEN_SAME_AS_ENV"]
+startup_timeout_sec = 60
+tool_timeout_sec = 120
+default_tools_approval_mode = "approve"
+```
+`YOUR_TOKEN_SAME_AS_ENV`는 `kis.env`의 `MCP_ACCESS_TOKEN`과 같은 값이다. 명령 한 줄 실행(`codex exec`)처럼 허락을 묻는 창이 없을 때는 `default_tools_approval_mode = "approve"`가 있어야 한투 도구를 쓴다. 없으면 웹 검색으로 답한 일이 있다(2026-10, Codex CLI 0.162).
+
+Cursor는 MCP 설정에 같은 SSE URL과 Bearer 헤더를 넣는다. 검증 기준(도구 목록 표시, 6단계 모의 조회 성공)은 같다.
 
 ### 6단계. 기능 확인 (모의)
 호스트 채팅이나 MCP 클라이언트로 도구 목록이 보이는지 확인하고, `domestic_stock`의 현재가 조회를 종목코드 `005930`(모의)으로 호출한다. 성공하면 숫자 현재가를 보고한다. 실전 키가 자리표시자면 실전 조회는 `EGW00304` 같은 키 오류가 나므로, 모의 성공만으로 설치 검증을 PASS로 본다.
+
+주문 기능도 쓸 거면 "모의계좌에서 삼성전자 1주를 현재가보다 20% 낮은 가격으로 지정가 매수해 줘. 가격은 호가단위에 맞게"를 실행해 주문번호를 확인하고, "방금 낸 주문 취소해 줘"를 실행한 뒤 주문체결 조회로 미체결 0을 확인한다. `CANO` 오류가 나면 FAIL로 보고하고 1단계 패치부터 다시 확인한다.
+
+### 키나 계좌를 바꿨을 때
+모의투자 참가 기간 3개월이 지나 다시 신청하면 계좌번호가 바뀐다. 앱 키는 계좌번호마다 따로 발급되므로 KIS Developers [서비스 신청/조회]에서 [추가신청]을 눌러 새 계좌번호용 키를 받는다. 예전 줄을 해지할 필요는 없다(2026-10 확인).
+
+1. `kis.env`의 `KIS_PAPER_APP_KEY`를 새 값으로 바꾼다.
+2. `KIS_PAPER_APP_SECRET`을 새 값으로 바꾼다.
+3. `KIS_PAPER_STOCK`을 새 모의 계좌번호로 바꾼다.
+4. `docker rm -f kis-trade-mcp`를 실행한 뒤 3단계의 `docker run`으로 컨테이너를 다시 만든다.
+
+`--env-file`은 컨테이너를 만들 때만 읽으므로 `docker restart`만 해서는 바뀌지 않는다. 컨테이너를 새로 만들면 예전 키로 받은 토큰 저장 파일도 컨테이너와 함께 지워진다.
 
 ### 보안
 - `kis.env`는 본인만 읽을 수 있게 하고 클라우드 동기화와 화면 공유를 피한다.

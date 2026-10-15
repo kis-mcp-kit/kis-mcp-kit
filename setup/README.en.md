@@ -28,21 +28,28 @@ Run these in a terminal (Command Prompt or PowerShell on Windows, Terminal on ma
 
 ```bash
 git clone --depth 1 https://github.com/koreainvestment/open-trading-api.git
-cd "open-trading-api/MCP/Kis Trading MCP"
+cd open-trading-api
+curl -fsSL -o pr85.diff https://raw.githubusercontent.com/kis-mcp-kit/kis-mcp-kit/main/patches/pr85.diff
+git apply pr85.diff
+cd "MCP/Kis Trading MCP"
 docker build -t kis-trade-mcp .
 ```
+
+The official server has a defect that makes orders, revisions, and cancellations fail with `order_cash() got an unexpected keyword argument 'CANO'`, and PR #85, which fixes it, has not been merged yet. The same PR also prevents live and paper calls made on the same day from overwriting each other's access-token files.
+
+In Windows PowerShell, use `curl.exe` instead of `curl`. If `git apply` fails because PR #85 has since been merged into the official repository, run `git apply --reverse --check pr85.diff`; if it exits quietly, the patch is already present and you can skip it. If you already built without the patch, apply it, rebuild the image, and recreate the container in step 3.
 
 The build takes a few minutes. A zip download also works, but if unzip fails on Korean file names, use `git clone` as above.
 
 ## 2. Create the environment file
 
-Instead of typing keys on the command line, put them in one file. Create `kis.env` outside the project folder and outside any cloud-synced folder, and fill it in like this.
+Instead of typing keys on the command line, put them in one file. Create `kis.env` in a working folder that is neither cloud-synced nor a public repository (for example, a separate folder under Documents). If you delegate the work to an AI agent, use the folder where you will run that agent.
 
 ```env
 KIS_PAPER_APP_KEY=paper App Key
 KIS_PAPER_APP_SECRET=paper App Secret
 KIS_HTS_ID=your HTS ID
-KIS_PAPER_STOCK=paper account number
+KIS_PAPER_STOCK=8-digit paper account number (the [나의계좌] (My Account) tab on the paper-trading site)
 KIS_PROD_TYPE=01
 MCP_TYPE=sse
 MCP_HOST=0.0.0.0
@@ -118,13 +125,41 @@ Make the file look like this, replacing `YOUR_TOKEN_SAME_AS_ENV` with the `MCP_A
 
 Save, quit Claude Desktop completely (File → Quit), and start it again. When `kis-trade-mcp` appears in the connector list of the chat window, you are connected.
 
-### Cursor, Codex
+### Codex CLI
 
-Enter the same address `http://localhost:3000/sse` and the same header `Authorization: Bearer <TOKEN>` in the product's MCP settings. The screens differ, but the check is the same: the tool list is visible and the paper-trading query in step 6 works. ChatGPT connectors accept only a public HTTPS URL reachable from the internet, so they are not used with this server, which is bound to `127.0.0.1` on your own machine.
+The config file is `~/.codex/config.toml` on macOS and Linux, and `%USERPROFILE%\.codex\config.toml` on Windows. Add the following and replace `YOUR_TOKEN_SAME_AS_ENV` with the `MCP_ACCESS_TOKEN` value from `kis.env`.
+
+```toml
+[mcp_servers.kis-trade-mcp]
+command = "npx"
+args = ["-y", "mcp-remote", "http://localhost:3000/sse", "--header", "Authorization: Bearer YOUR_TOKEN_SAME_AS_ENV"]
+startup_timeout_sec = 60
+tool_timeout_sec = 120
+default_tools_approval_mode = "approve"
+```
+
+When no approval prompt is available, as with a one-line command (`codex exec`), `default_tools_approval_mode = "approve"` is required for Codex to use the KIS tools. Without it, Codex answered from a web search instead (measured October 2026, Codex CLI 0.162). This server also has order tools, so test it with paper credentials.
+
+### Cursor
+
+Enter the same address `http://localhost:3000/sse` and the same header `Authorization: Bearer <TOKEN>` in the MCP settings. The tool list must be visible and the paper-trading query in step 6 must work. ChatGPT connectors accept only a public HTTPS URL reachable from the internet, so they are not used with this server, which is bound to `127.0.0.1` on your own machine.
 
 ## 6. Try it
 
 In the AI tool's chat, type "Show me the current price of Samsung Electronics on my paper account". A numeric price means the setup is complete. If you left the live key as a placeholder and ask for a live query, you get a key error such as `EGW00304`; that is expected, and a successful paper query is all the verification you need.
+
+If you plan to use the order tools, type "On my paper account, place a limit buy for one share of Samsung Electronics at 20% below the current price. Adjust the price to the valid tick size", then type "Cancel the order I just placed". The price is far enough below the market that the order will not fill and no money is spent. If you receive an order number and the cancellation succeeds, the order tools work too. A `CANO` error means the patch in step 1 is missing.
+
+## 7. When you get a new paper-trading account
+
+When the three-month paper-trading participation period ends and you apply again, the account number changes. App keys are issued separately for each account number, so use [추가신청] (Add Application) under [서비스 신청/조회] (Service Application/Status) in KIS Developers to get keys for the new number. You do not need to cancel the old row (verified October 2026).
+
+1. Replace `KIS_PAPER_APP_KEY` in `kis.env` with the new value.
+2. Replace `KIS_PAPER_APP_SECRET` with the new value.
+3. Replace `KIS_PAPER_STOCK` with the new paper account number.
+4. Run `docker rm -f kis-trade-mcp`, then recreate the container with the `docker run` command in step 3.
+
+`--env-file` is read only when the container is created, so `docker restart` does not pick up the changes. Recreating the container also removes the token file created with the old key because that file is stored inside the container.
 
 ## Troubleshooting
 
@@ -137,6 +172,11 @@ In the AI tool's chat, type "Show me the current price of Samsung Electronics on
 | Port already in use | Another program uses 3000 | Use `-p 127.0.0.1:3001:3000` and 3001 in the addresses |
 | Not shown in Claude Desktop connectors | JSON syntax error, token mismatch, app not fully quit | Check commas and quotes, compare tokens, File → Quit and relaunch |
 | `EGW00304` on a live query | Live App Secret is a placeholder | Expected; verify with the paper account |
+| `order_cash() got an unexpected keyword argument 'CANO'` on an order, revision, or cancellation | Unpatched official server | Apply the patch in step 1, rebuild the image, and recreate the container |
+| `기간이 만료된 token 입니다` (expired token, `EGW00123`) | The key changed but the old token file remained, or live and paper calls were mixed on the same day without the patch | Apply the patch and recreate the container |
+| `모의투자 처리계좌의 ID와 사용자정보가 상이` (paper-account ID and user information do not match) | Key from an expired paper account | Follow step 7 to change to the new account and keys |
+| `INVALID_CHECK_ACNO` (`OPSQ2000`) | A new account number is being used with a key issued for the old account | Get a key for the new account number as described in step 7 |
+| The revisable/cancellable-order query (`inquire_psbl_rvsecncl`) returns `OPSQ0002 없는 서비스 코드` (service code does not exist) | That query is unavailable in paper trading | Check open orders through the order/execution history query (`inquire_daily_ccld`) instead (measured October 2026) |
 | On Windows over SSH or unattended, `docker` cannot reach Docker Desktop | Docker Desktop depends on the GUI and a named pipe | Install `docker.io` (Docker CE) inside a WSL2 distribution and build/run there |
 | Several WSL2 distributions collide on port 3000 | WSL2 distributions have separate file systems but share `localhost` with the Windows host | Publish each on a different host port (`-p 127.0.0.1:3001:3000`, etc.) |
 | You delegated to an AI agent and it stops at the first command | The agent (Cursor, Codex, Claude Code) is not logged in, or `kis.env` is not in the working folder | Log in interactively and create `kis.env` first, then restart (see the top of [AGENTS.en.md](AGENTS.en.md)) |
