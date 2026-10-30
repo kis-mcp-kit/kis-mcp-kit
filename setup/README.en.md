@@ -29,15 +29,13 @@ Run these in a terminal (Command Prompt or PowerShell on Windows, Terminal on ma
 ```bash
 git clone --depth 1 https://github.com/koreainvestment/open-trading-api.git
 cd open-trading-api
-curl -fsSL -o pr85.diff https://raw.githubusercontent.com/kis-mcp-kit/kis-mcp-kit/main/patches/pr85.diff
-git apply pr85.diff
 cd "MCP/Kis Trading MCP"
 docker build -t kis-trade-mcp .
 ```
 
-The official server has a defect that makes orders, revisions, and cancellations fail with `order_cash() got an unexpected keyword argument 'CANO'`, and PR #85, which fixes it, has not been merged yet. The same PR also prevents live and paper calls made on the same day from overwriting each other's access-token files.
+The defect that made orders, revisions, and cancellations fail with `order_cash() got an unexpected keyword argument 'CANO'`, and the problem of live and paper calls made on the same day overwriting each other's access-token files, were fixed by Korea Investment & Securities in the official repository on 2026-10-27 (commits f89a8cc and 3a9be59). Build it as is, without a patch.
 
-In Windows PowerShell, use `curl.exe` instead of `curl`. If `git apply` fails because PR #85 has since been merged into the official repository, run `git apply --reverse --check pr85.diff`; if it exits quietly, the patch is already present and you can skip it. If you already built without the patch, apply it, rebuild the image, and recreate the container in step 3.
+In Windows PowerShell, use `curl.exe` instead of `curl`. If you built the image from code downloaded before 2026-10-27, clone the repository again, rebuild the image, and recreate the container in step 3.
 
 The build takes a few minutes. A zip download also works, but if unzip fails on Korean file names, use `git clone` as above.
 
@@ -148,7 +146,7 @@ Enter the same address `http://localhost:3000/sse` and the same header `Authoriz
 
 In the AI tool's chat, type "Show me the current price of Samsung Electronics on my paper account". A numeric price means the setup is complete. If you left the live key as a placeholder and ask for a live query, you get a key error such as `EGW00304`; that is expected, and a successful paper query is all the verification you need.
 
-If you plan to use the order tools, type "On my paper account, place a limit buy for one share of Samsung Electronics at 20% below the current price. Adjust the price to the valid tick size", then type "Cancel the order I just placed". The price is far enough below the market that the order will not fill and no money is spent. If you receive an order number and the cancellation succeeds, the order tools work too. A `CANO` error means the patch in step 1 is missing.
+If you plan to use the order tools, type "On my paper account, place a limit buy for one share of Samsung Electronics at 20% below the current price. Adjust the price to the valid tick size", then type "Cancel the order I just placed". The price is far enough below the market that the order will not fill and no money is spent. If you receive an order number and the cancellation succeeds, the order tools work too. A `CANO` error means the code was downloaded before 2026-10-27; clone it again from step 1 and rebuild.
 
 ## 7. When you get a new paper-trading account
 
@@ -172,8 +170,8 @@ When the three-month paper-trading participation period ends and you apply again
 | Port already in use | Another program uses 3000 | Use `-p 127.0.0.1:3001:3000` and 3001 in the addresses |
 | Not shown in Claude Desktop connectors | JSON syntax error, token mismatch, app not fully quit | Check commas and quotes, compare tokens, File → Quit and relaunch |
 | `EGW00304` on a live query | Live App Secret is a placeholder | Expected; verify with the paper account |
-| `order_cash() got an unexpected keyword argument 'CANO'` on an order, revision, or cancellation | Unpatched official server | Apply the patch in step 1, rebuild the image, and recreate the container |
-| `기간이 만료된 token 입니다` (expired token, `EGW00123`) | The key changed but the old token file remained, or live and paper calls were mixed on the same day without the patch | Apply the patch and recreate the container |
+| `order_cash() got an unexpected keyword argument 'CANO'` on an order, revision, or cancellation | Official server code downloaded before 2026-10-27 | Clone the repository again as in step 1, rebuild the image, and recreate the container |
+| `기간이 만료된 token 입니다` (expired token, `EGW00123`) | The key changed but the old token file remained, or live and paper calls were mixed on the same day with code from before 2026-10-27 | Recreate the container (with code from before 2026-10-27, clone again and rebuild first) |
 | `모의투자 처리계좌의 ID와 사용자정보가 상이` (paper-account ID and user information do not match) | Key from an expired paper account | Follow step 7 to change to the new account and keys |
 | `INVALID_CHECK_ACNO` (`OPSQ2000`) | A new account number is being used with a key issued for the old account | Get a key for the new account number as described in step 7 |
 | The revisable/cancellable-order query (`inquire_psbl_rvsecncl`) returns `OPSQ0002 없는 서비스 코드` (service code does not exist) | That query is unavailable in paper trading | Check open orders through the order/execution history query (`inquire_daily_ccld`) instead (measured October 2026) |

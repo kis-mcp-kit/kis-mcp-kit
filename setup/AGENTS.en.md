@@ -49,14 +49,12 @@ You are going to install, start, and connect the Korea Investment & Securities (
 ```bash
 git clone --depth 1 https://github.com/koreainvestment/open-trading-api.git
 cd open-trading-api
-curl -fsSL -o pr85.diff https://raw.githubusercontent.com/kis-mcp-kit/kis-mcp-kit/main/patches/pr85.diff
-git apply pr85.diff
 cd "MCP/Kis Trading MCP"
 docker build -t kis-trade-mcp .
 ```
-The official server has a defect that makes orders, revisions, and cancellations fail with `order_cash() got an unexpected keyword argument 'CANO'`, and PR #85, which fixes it, has not been merged yet. The same PR also prevents live and paper calls made on the same day from overwriting each other's access-token files.
+The defect that made orders, revisions, and cancellations fail with `order_cash() got an unexpected keyword argument 'CANO'`, and the problem of live and paper calls made on the same day overwriting each other's access-token files, were fixed by Korea Investment & Securities in the official repository on 2026-10-27 (commits f89a8cc and 3a9be59). Build it as is, without a patch.
 
-In Windows PowerShell, use `curl.exe` instead of `curl`. If `git apply` fails because PR #85 has since been merged into the official repository, run `git apply --reverse --check pr85.diff`; if it exits quietly, the patch is already present and can be skipped. If the image was already built without the patch, apply it, rebuild the image, and recreate the container in step 3.
+In Windows PowerShell, use `curl.exe` instead of `curl`. If an image already exists from code downloaded before 2026-10-27, clone the repository again, rebuild the image, and recreate the container in step 3.
 
 A zip download also works, but if unzip fails on Korean file names, use `git clone`.
 
@@ -153,7 +151,7 @@ For Cursor, enter the same SSE URL and Bearer header in its MCP settings. The ac
 ### Step 6. Smoke test (paper account)
 From the host chat or an MCP client, confirm the tool list is visible, then call the current-price tool under `domestic_stock` for stock code `005930` on the paper account. Report the numeric price. If the live key is a placeholder, live queries fail with a key error such as `EGW00304`; treat a successful paper query as PASS for the installation.
 
-If order tools will be used, run "On my paper account, place a limit buy for one share of Samsung Electronics at 20% below the current price. Adjust the price to the valid tick size", confirm the order number, then run "Cancel the order I just placed" and use the order/execution history query to confirm zero open shares. Treat a `CANO` error as FAIL and recheck the patch from step 1.
+If order tools will be used, run "On my paper account, place a limit buy for one share of Samsung Electronics at 20% below the current price. Adjust the price to the valid tick size", confirm the order number, then run "Cancel the order I just placed" and use the order/execution history query to confirm zero open shares. Treat a `CANO` error as FAIL and recheck from step 1 that the code was downloaded on or after 2026-10-27.
 
 ### When keys or accounts change
 When the three-month paper-trading participation period ends and the user applies again, the account number changes. App keys are issued separately for each account number, so use [추가신청] (Add Application) under [서비스 신청/조회] (Service Application/Status) in KIS Developers to get keys for the new number. The old row does not need to be cancelled (verified October 2026).

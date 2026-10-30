@@ -49,14 +49,12 @@
 ```bash
 git clone --depth 1 https://github.com/koreainvestment/open-trading-api.git
 cd open-trading-api
-curl -fsSL -o pr85.diff https://raw.githubusercontent.com/kis-mcp-kit/kis-mcp-kit/main/patches/pr85.diff
-git apply pr85.diff
 cd "MCP/Kis Trading MCP"
 docker build -t kis-trade-mcp .
 ```
-공식 서버에는 주문·정정·취소가 `order_cash() got an unexpected keyword argument 'CANO'`로 실패하는 결함이 있고, 이를 고치는 PR #85는 아직 합쳐지지 않았다. 같은 PR은 같은 날 실전·모의 호출의 접속 토큰 저장 파일이 서로 겹치는 문제도 고친다.
+주문·정정·취소가 `order_cash() got an unexpected keyword argument 'CANO'`로 실패하던 결함과, 같은 날 실전·모의 호출의 접속 토큰 저장 파일이 서로 겹치던 문제는 한국투자증권이 2026-10-27 공식 저장소에서 고쳤다(커밋 f89a8cc, 3a9be59). 그래서 패치 없이 그대로 빌드한다.
 
-Windows PowerShell에서는 `curl` 대신 `curl.exe`를 쓴다. 공식 저장소에 PR #85가 합쳐져 `git apply`가 실패하면 `git apply --reverse --check pr85.diff`가 조용히 끝나는지 확인하고, 그러면 패치가 이미 들어간 것이므로 건너뛴다. 이미 패치 없이 빌드했다면 패치를 넣고 이미지를 다시 빌드한 뒤 3단계에서 컨테이너를 새로 만든다.
+Windows PowerShell에서는 `curl` 대신 `curl.exe`를 쓴다. 2026-10-27 전에 받은 코드로 이미지가 이미 있으면 저장소를 새로 받아 이미지를 다시 빌드한 뒤 3단계에서 컨테이너를 새로 만든다.
 
 zip으로 받아도 되지만 한글 파일명 때문에 압축 해제 오류가 나면 `git clone`을 쓴다.
 
@@ -153,7 +151,7 @@ Cursor는 MCP 설정에 같은 SSE URL과 Bearer 헤더를 넣는다. 검증 기
 ### 6단계. 기능 확인 (모의)
 호스트 채팅이나 MCP 클라이언트로 도구 목록이 보이는지 확인하고, `domestic_stock`의 현재가 조회를 종목코드 `005930`(모의)으로 호출한다. 성공하면 숫자 현재가를 보고한다. 실전 키가 자리표시자면 실전 조회는 `EGW00304` 같은 키 오류가 나므로, 모의 성공만으로 설치 검증을 PASS로 본다.
 
-주문 기능도 쓸 거면 "모의계좌에서 삼성전자 1주를 현재가보다 20% 낮은 가격으로 지정가 매수해 줘. 가격은 호가단위에 맞게"를 실행해 주문번호를 확인하고, "방금 낸 주문 취소해 줘"를 실행한 뒤 주문체결 조회로 미체결 0을 확인한다. `CANO` 오류가 나면 FAIL로 보고하고 1단계 패치부터 다시 확인한다.
+주문 기능도 쓸 거면 "모의계좌에서 삼성전자 1주를 현재가보다 20% 낮은 가격으로 지정가 매수해 줘. 가격은 호가단위에 맞게"를 실행해 주문번호를 확인하고, "방금 낸 주문 취소해 줘"를 실행한 뒤 주문체결 조회로 미체결 0을 확인한다. `CANO` 오류가 나면 FAIL로 보고하고 1단계의 받은 코드 날짜(2026-10-27 이후인지)부터 다시 확인한다.
 
 ### 키나 계좌를 바꿨을 때
 모의투자 참가 기간 3개월이 지나 다시 신청하면 계좌번호가 바뀐다. 앱 키는 계좌번호마다 따로 발급되므로 KIS Developers [서비스 신청/조회]에서 [추가신청]을 눌러 새 계좌번호용 키를 받는다. 예전 줄을 해지할 필요는 없다(2026-10 확인).
